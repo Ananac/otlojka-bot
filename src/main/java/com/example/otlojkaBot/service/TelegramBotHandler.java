@@ -1,25 +1,38 @@
 package com.example.otlojkaBot.service;
 
-import lombok.Data;
+import com.example.otlojkaBot.domain.Record;
+import com.example.otlojkaBot.repository.RecordRepository;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.ParseMode;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
+
 @Component
-@Data
+@Getter
 @Slf4j
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class TelegramBotHandler extends TelegramLongPollingBot {
+    private final RecordRepository recordRepository;
+
     @Value("${telegram.name}")
     private String name;
 
     @Value("${telegram.token}")
     private String token;
+
+    @Value("${telegram.chatId}")
+    private String chatId;
 
     @Override
     public String getBotUsername() {
@@ -33,42 +46,33 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            String text = update.getMessage().getText();
-            long chat_id = update.getMessage().getChatId();
-
-            try {
-                SendMessage message = getCommandResponse(text, update.getMessage().getFrom(), String.valueOf(chat_id));
-                message.enableHtml(true);
-                message.setParseMode(ParseMode.HTML);
-                message.setChatId(String.valueOf(chat_id));
-                execute(message);
-            } catch (TelegramApiException e) {
-                log.error("", e);
-                SendMessage message = handleNotFoundCommand();
-                message.setChatId(String.valueOf(chat_id));
-            }
-        } else if (update.hasCallbackQuery()) {
-            try {
-                SendMessage message = getCommandResponse(update.getCallbackQuery().getData(), update.getCallbackQuery().getFrom(), String.valueOf(update.getCallbackQuery().getMessage().getChatId()));
-                message.enableHtml(true);
-                message.setParseMode(ParseMode.HTML);
-                message.setChatId(String.valueOf(update.getCallbackQuery().getMessage().getChatId()));
-                execute(message);
-            } catch (TelegramApiException e) {
-                log.error("", e);
-            }
+        if (update.hasMessage()) {
+            Record record = new Record();
+            String f_id = update.getMessage().getPhoto().stream()
+                    .max(Comparator.comparing(PhotoSize::getFileSize))
+                    .orElse(null)
+                    .getFileId();
+            record.setId(update.getMessage().getMessageId());
+            record.setFileId(f_id);
+            record.setComment(update.getMessage().getText());
+            record.setDataType("PHOTO");
+            record.setCreateDateTime(LocalDateTime.now());
+            recordRepository.save(record);
         }
     }
 
-    private SendMessage getCommandResponse(String text, User user, String chatId) throws TelegramApiException {
-
-        return handleNotFoundCommand();
-    }
-
-    private SendMessage handleNotFoundCommand() {
-        SendMessage message = new SendMessage();
-        message.setText("");
-        return message;
+    public void sendPhoto(Record record) {
+        try {
+            SendPhoto sendPhoto = new SendPhoto();
+            sendPhoto.setChatId(chatId);
+            sendPhoto.setPhoto(new InputFile(record.getFileId()));
+            execute(sendPhoto);
+            record.setPostDateTime(LocalDateTime.now());
+            recordRepository.save(record);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
     }
 }
+
+
