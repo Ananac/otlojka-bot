@@ -17,7 +17,7 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
     @Query("select r from Record r where r.postDateTime = (select max(r1.postDateTime) from Record r1)")
     Optional<Record> getLastPostedRecord();
 
-    @Query("select count(*) from Record r where r.postDateTime != null")
-    long checkIfTableIsEmpty();
+    @Query("select count(*) from Record r where r.postDateTime = null")
+    long scheduledAmount();
 
 }

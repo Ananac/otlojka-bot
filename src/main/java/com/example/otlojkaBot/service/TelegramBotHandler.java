@@ -98,6 +98,17 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             record.setId(update.getMessage().getMessageId());
             record.setCreateDateTime(LocalDateTime.now());
             recordRepository.save(record);
+
+            long scheduledAmount = recordRepository.scheduledAmount();
+            SendMessage sendMessage = new SendMessage();
+            sendMessage.setChatId(String.valueOf(update.getMessage().getChatId()));
+            sendMessage.setText("Добавлено. Количество постов в отложке: " + scheduledAmount);
+            try {
+                execute(sendMessage);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+
         }
     }
 
