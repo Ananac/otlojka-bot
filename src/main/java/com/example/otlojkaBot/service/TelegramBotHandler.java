@@ -77,6 +77,7 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
 
     private void processMessage(Update update) {
         Record record = new Record();
+        Long chatId = update.getMessage().getChatId();
         if (update.getMessage().getPhoto() != null && !update.getMessage().getPhoto().isEmpty()) {
             String fileId = update.getMessage().getPhoto().stream()
                     .max(Comparator.comparing(PhotoSize::getFileSize))
@@ -101,7 +102,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             record.setComment(update.getMessage().getCaption());
             record.setDataType("DOCUMENT");
         } else if (update.getMessage().getText() != null) {
-            Long chatId = update.getMessage().getChatId();
             switch (update.getMessage().getText()) {
                 case "/info": {
                     long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
@@ -120,7 +120,9 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
                 }
             }
             reply(chatId, "Посты с текстом не поддерживаются");
+            return;
         } else {
+            reply(chatId, "Я такое постить не буду");
             return;
         }
         record.setId(update.getMessage().getMessageId());
