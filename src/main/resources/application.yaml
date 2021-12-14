@@ -1,8 +1,12 @@
+server:
+  port: ${PORT:33500}
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+
 
 telegram:
   name: ${BOT_NAME}
