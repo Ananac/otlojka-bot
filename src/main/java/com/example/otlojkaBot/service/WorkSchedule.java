@@ -3,6 +3,7 @@ package com.example.otlojkaBot.service;
 import com.example.otlojkaBot.domain.Record;
 import com.example.otlojkaBot.repository.RecordRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,20 +17,24 @@ public class WorkSchedule {
     private final RecordRepository recordRepository;
     private final TelegramBotHandler botHandler;
 
-    @Scheduled(fixedDelayString = "10000")
+    @Value("${schedule.postingInterval}")
+    private long postingInterval;
+
+    @Scheduled(fixedDelayString = "60000")
     public void run() {
         Optional<Record> recordOptional = recordRepository.getFirstRecordInQueue();
         if (recordOptional.isPresent()) {
-            if (recordRepository.checkIfTableIsEmpty() != 0) {
-                Record lastPostedRecord = recordRepository.getLastPostedRecord().get();
+            Optional<Record> lastPostedRecordOptional = recordRepository.getLastPostedRecord();
+            if (lastPostedRecordOptional.isPresent()) {
+                Record lastPostedRecord = lastPostedRecordOptional.get();
                 Duration duration = Duration.between(lastPostedRecord.getPostDateTime(), LocalDateTime.now());
-                if (duration.toMinutes() >= 2) {
+                if (duration.toMinutes() >= postingInterval) {
                     Record record = recordOptional.get();
-                    botHandler.sendPhoto(record);
+                    botHandler.doPost(record);
                 }
             } else {
                 Record record = recordOptional.get();
-                botHandler.sendPhoto(record);
+                botHandler.doPost(record);
             }
         }
     }

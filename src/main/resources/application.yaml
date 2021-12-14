@@ -8,3 +8,7 @@ telegram:
   name: ${BOT_NAME}
   token: ${BOT_TOKEN}
   chatId: ${CHAT_ID}
+  adminId: ${ADMIN_ID}
+
+schedule:
+  postingInterval: 120
