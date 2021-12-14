@@ -13,7 +13,7 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class WorkSchedule {
+public class RecordService {
     private final RecordRepository recordRepository;
     private final TelegramBotHandler botHandler;
 
@@ -21,7 +21,7 @@ public class WorkSchedule {
     private long postingInterval;
 
     @Scheduled(fixedDelayString = "60000")
-    public void run() {
+    private void run() {
         Optional<Record> recordOptional = recordRepository.getFirstRecordInQueue();
         if (recordOptional.isPresent()) {
             Optional<Record> lastPostedRecordOptional = recordRepository.getLastPostedRecord();
@@ -30,12 +30,40 @@ public class WorkSchedule {
                 Duration duration = Duration.between(lastPostedRecord.getPostDateTime(), LocalDateTime.now());
                 if (duration.toMinutes() >= postingInterval) {
                     Record record = recordOptional.get();
-                    botHandler.doPost(record);
+                    doPost(record);
                 }
             } else {
                 Record record = recordOptional.get();
-                botHandler.doPost(record);
+                doPost(record);
             }
         }
     }
+
+
+    private void doPost(Record record) {
+        switch (record.getDataType()) {
+            case "PHOTO": {
+                botHandler.sendPhoto(record);
+                break;
+            }
+            case "VIDEO": {
+                botHandler.sendVideo(record);
+                break;
+            }
+            case "TEXT": {
+                botHandler.sendMessage(record);
+                break;
+            }
+            case "ANIMATION": {
+                botHandler.sendAnimation(record);
+                break;
+            }
+            case "DOCUMENT": {
+                botHandler.sendDocument(record);
+                break;
+            }
+        }
+    }
+
+
 }
