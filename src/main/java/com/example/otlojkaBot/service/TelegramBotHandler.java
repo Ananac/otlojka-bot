@@ -50,65 +50,7 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
         if (adminId.contains(update.getMessage().getFrom().getId())) {
             processMessage(update);
         } else {
-            try {
-                SendMessage sendMessage = new SendMessage();
-                sendMessage.setChatId(String.valueOf(update.getMessage().getChatId()));
-                sendMessage.setText("Permission denied");
-                execute(sendMessage);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private void processMessage(Update update) {
-        if (update.hasMessage()) {
-            Record record = new Record();
-            if (update.getMessage().getPhoto() != null && !update.getMessage().getPhoto().isEmpty()) {
-                String f_id = update.getMessage().getPhoto().stream()
-                        .max(Comparator.comparing(PhotoSize::getFileSize))
-                        .orElse(null)
-                        .getFileId();
-                record.setFileId(f_id);
-                record.setComment(update.getMessage().getCaption());
-                record.setDataType("PHOTO");
-            } else if (update.getMessage().getVideo() != null) {
-                String f_id = update.getMessage().getVideo().getFileId();
-                record.setFileId(f_id);
-                record.setComment(update.getMessage().getCaption());
-                record.setDataType("VIDEO");
-            } else if (update.getMessage().getAnimation() != null) {
-                String f_id = update.getMessage().getAnimation().getFileId();
-                record.setFileId(f_id);
-                record.setComment(update.getMessage().getCaption());
-                record.setDataType("ANIMATION");
-            } else if (update.getMessage().getDocument() != null) {
-                String f_id = update.getMessage().getDocument().getFileId();
-                record.setFileId(f_id);
-                record.setComment(update.getMessage().getCaption());
-                record.setDataType("DOCUMENT");
-            } else if (update.getMessage().getText() != null) {
-                record.setComment(update.getMessage().getText());
-                record.setDataType("TEXT");
-            } else {
-                return;
-            }
-
-
-            record.setId(update.getMessage().getMessageId());
-            record.setCreateDateTime(LocalDateTime.now());
-            recordRepository.save(record);
-
-            long scheduledAmount = recordRepository.scheduledAmount();
-            SendMessage sendMessage = new SendMessage();
-            sendMessage.setChatId(String.valueOf(update.getMessage().getChatId()));
-            sendMessage.setText("Добавлено. Количество постов в отложке: " + scheduledAmount);
-            try {
-                execute(sendMessage);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
-
+            reply(update.getMessage().getFrom().getId(), "Permission denied");
         }
     }
 
@@ -137,72 +79,125 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
         }
     }
 
-    public void sendAnimation(Record record) {
-        try {
-            SendAnimation sendAnimation = new SendAnimation();
-            sendAnimation.setChatId(chatId);
-            sendAnimation.setCaption(record.getComment());
-            execute(sendAnimation);
-            record.setPostDateTime(LocalDateTime.now());
+
+    private void processMessage(Update update) {
+        if (update.hasMessage()) {
+            Record record = new Record();
+            if (update.getMessage().getPhoto() != null && !update.getMessage().getPhoto().isEmpty()) {
+                String fileId = update.getMessage().getPhoto().stream()
+                        .max(Comparator.comparing(PhotoSize::getFileSize))
+                        .orElse(null)
+                        .getFileId();
+                record.setFileId(fileId);
+                record.setComment(update.getMessage().getCaption());
+                record.setDataType("PHOTO");
+            } else if (update.getMessage().getVideo() != null) {
+                String fileId = update.getMessage().getVideo().getFileId();
+                record.setFileId(fileId);
+                record.setComment(update.getMessage().getCaption());
+                record.setDataType("VIDEO");
+            } else if (update.getMessage().getAnimation() != null) {
+                String fileId = update.getMessage().getAnimation().getFileId();
+                record.setFileId(fileId);
+                record.setComment(update.getMessage().getCaption());
+                record.setDataType("ANIMATION");
+            } else if (update.getMessage().getDocument() != null) {
+                String fileId = update.getMessage().getDocument().getFileId();
+                record.setFileId(fileId);
+                record.setComment(update.getMessage().getCaption());
+                record.setDataType("DOCUMENT");
+            } else if (update.getMessage().getText() != null) {
+                record.setComment(update.getMessage().getText());
+                record.setDataType("TEXT");
+            } else {
+                return;
+            }
+            record.setId(update.getMessage().getMessageId());
+            record.setCreateDateTime(LocalDateTime.now());
+            record.setAuthor(update.getMessage().getFrom().getUserName());
             recordRepository.save(record);
+            long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
+            reply(update.getMessage().getChatId(), "Добавлено. Количество постов в отложке: " + numberOfScheduledPosts);
+        }
+    }
+
+    private void reply(Long chatId, String text) {
+        try {
+            SendMessage sendMessage = new SendMessage();
+            sendMessage.setChatId(String.valueOf(chatId));
+            sendMessage.setText(text);
+            execute(sendMessage);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
 
-    public void sendDocument(Record record) {
+    private void sendAnimation(Record record) {
+        try {
+            SendAnimation sendAnimation = new SendAnimation();
+            sendAnimation.setChatId(chatId);
+            sendAnimation.setCaption(record.getComment());
+            execute(sendAnimation);
+            afterPost(record);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendDocument(Record record) {
         try {
             SendDocument sendDocument = new SendDocument();
             sendDocument.setChatId(chatId);
             sendDocument.setDocument(new InputFile(record.getFileId()));
             sendDocument.setCaption(record.getComment());
             execute(sendDocument);
-            record.setPostDateTime(LocalDateTime.now());
-            recordRepository.save(record);
+            afterPost(record);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
 
-    public void sendMessage(Record record) {
+    private void sendMessage(Record record) {
         try {
             SendMessage sendMessage = new SendMessage();
             sendMessage.setChatId(chatId);
             sendMessage.setText(record.getComment());
             execute(sendMessage);
-            record.setPostDateTime(LocalDateTime.now());
-            recordRepository.save(record);
+            afterPost(record);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
 
-    public void sendPhoto(Record record) {
+    private void sendPhoto(Record record) {
         try {
             SendPhoto sendPhoto = new SendPhoto();
             sendPhoto.setChatId(chatId);
             sendPhoto.setPhoto(new InputFile(record.getFileId()));
             sendPhoto.setCaption(record.getComment());
             execute(sendPhoto);
-            record.setPostDateTime(LocalDateTime.now());
-            recordRepository.save(record);
+            afterPost(record);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
 
-    public void sendVideo(Record record) {
+    private void sendVideo(Record record) {
         try {
             SendVideo sendVideo = new SendVideo();
             sendVideo.setChatId(chatId);
             sendVideo.setVideo(new InputFile(record.getFileId()));
             sendVideo.setCaption(record.getComment());
             execute(sendVideo);
-            record.setPostDateTime(LocalDateTime.now());
-            recordRepository.save(record);
+            afterPost(record);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
+    }
+
+    private void afterPost(Record record) {
+        record.setPostDateTime(LocalDateTime.now());
+        recordRepository.save(record);
     }
 }
 

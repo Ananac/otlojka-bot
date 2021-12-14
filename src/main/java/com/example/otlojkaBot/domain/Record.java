@@ -21,5 +21,6 @@ public class Record {
     private String dataType;
     private LocalDateTime createDateTime;
     private LocalDateTime postDateTime;
+    private String author;
 
 }

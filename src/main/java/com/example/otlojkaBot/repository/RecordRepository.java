@@ -18,6 +18,6 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
     Optional<Record> getLastPostedRecord();
 
     @Query("select count(*) from Record r where r.postDateTime = null")
-    long scheduledAmount();
+    long getNumberOfScheduledPosts();
 
 }
