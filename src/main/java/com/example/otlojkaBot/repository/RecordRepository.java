@@ -3,9 +3,11 @@ package com.example.otlojkaBot.repository;
 
 import com.example.otlojkaBot.domain.Record;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import javax.transaction.Transactional;
 import java.util.Optional;
 
 @Repository
@@ -19,5 +21,10 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
 
     @Query("select count(*) from Record r where r.postDateTime = null")
     long getNumberOfScheduledPosts();
+
+    @Transactional
+    @Modifying
+    @Query("delete from Record r where r.postDateTime = null")
+    void clear();
 
 }

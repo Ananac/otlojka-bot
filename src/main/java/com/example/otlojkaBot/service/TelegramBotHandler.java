@@ -102,16 +102,24 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             record.setDataType("DOCUMENT");
         } else if (update.getMessage().getText() != null) {
             Long chatId = update.getMessage().getChatId();
-            if (update.getMessage().getText().equals("/start")) {
-                handleStartCommand(chatId);
-                return;
-            } else if (update.getMessage().getText().equals("/info")) {
-                long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
-                handleInfoCommand(chatId, "Количество постов в отложке: " + numberOfScheduledPosts);
-                return;
+            switch (update.getMessage().getText()) {
+                case "/info": {
+                    long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
+                    reply(chatId, "Количество постов в отложке: " + numberOfScheduledPosts);
+                    return;
+                }
+                case "/clear": {
+                    reply(chatId, "Чтобы очистить напиши /delete");
+                    return;
+                }
+                case "/delete": {
+                    recordRepository.clear();
+                    long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
+                    reply(chatId, "Очищено. Количество постов в отложке: " + numberOfScheduledPosts);
+                    return;
+                }
             }
-            record.setComment(update.getMessage().getText());
-            record.setDataType("TEXT");
+            reply(chatId, "Посты с текстом не поддерживаются");
         } else {
             return;
         }
@@ -121,53 +129,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
         recordRepository.save(record);
         long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
         reply(update.getMessage().getChatId(), "Добавлено. Количество постов в отложке: " + numberOfScheduledPosts);
-    }
-
-
-    private void handleStartCommand(Long chatId) {
-        SendMessage message = new SendMessage();
-        message.setText("Доступные команды:");
-        message.setChatId(String.valueOf(chatId));
-        message.setReplyMarkup(getKeyboard());
-        message.enableHtml(true);
-        message.setParseMode(ParseMode.HTML);
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void handleInfoCommand(Long chatId, String text) {
-        SendMessage message = new SendMessage();
-        message.setText(text);
-        message.setChatId(String.valueOf(chatId));
-        message.setReplyMarkup(getKeyboard());
-        message.enableHtml(true);
-        message.setParseMode(ParseMode.HTML);
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private InlineKeyboardMarkup getKeyboard() {
-        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-
-        InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
-        inlineKeyboardButton.setText("Сколько постов в отложке?");
-        inlineKeyboardButton.setCallbackData(COMMANDS.INFO.getCommand());
-
-        List<List<InlineKeyboardButton>> keyboardButtons = new ArrayList<>();
-
-        List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
-        keyboardButtonsRow1.add(inlineKeyboardButton);
-        keyboardButtons.add(keyboardButtonsRow1);
-
-        inlineKeyboardMarkup.setKeyboard(keyboardButtons);
-
-        return inlineKeyboardMarkup;
     }
 
     private void reply(Long chatId, String text) {
@@ -185,7 +146,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
         try {
             SendAnimation sendAnimation = new SendAnimation();
             sendAnimation.setChatId(chatId);
-            sendAnimation.setCaption(record.getComment());
             execute(sendAnimation);
             afterPost(record);
         } catch (TelegramApiException e) {
@@ -198,7 +158,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             SendDocument sendDocument = new SendDocument();
             sendDocument.setChatId(chatId);
             sendDocument.setDocument(new InputFile(record.getFileId()));
-            sendDocument.setCaption(record.getComment());
             execute(sendDocument);
             afterPost(record);
         } catch (TelegramApiException e) {
@@ -223,7 +182,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             SendPhoto sendPhoto = new SendPhoto();
             sendPhoto.setChatId(chatId);
             sendPhoto.setPhoto(new InputFile(record.getFileId()));
-            sendPhoto.setCaption(record.getComment());
             execute(sendPhoto);
             afterPost(record);
         } catch (TelegramApiException e) {
@@ -236,7 +194,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             SendVideo sendVideo = new SendVideo();
             sendVideo.setChatId(chatId);
             sendVideo.setVideo(new InputFile(record.getFileId()));
-            sendVideo.setCaption(record.getComment());
             execute(sendVideo);
             afterPost(record);
         } catch (TelegramApiException e) {
