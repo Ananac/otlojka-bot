@@ -7,19 +7,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Set;
 
 @Component
@@ -48,21 +43,6 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return token;
-    }
-
-    private enum COMMANDS {
-        START("/start"),
-        INFO("/info");
-
-        private String command;
-
-        COMMANDS(String command) {
-            this.command = command;
-        }
-
-        public String getCommand() {
-            return command;
-        }
     }
 
     @Override
