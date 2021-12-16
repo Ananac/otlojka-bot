@@ -22,18 +22,18 @@ public class RecordService {
 
     @Scheduled(fixedDelayString = "60000")
     private void run() {
-        Optional<Record> recordOptional = recordRepository.getFirstRecordInQueue();
-        if (recordOptional.isPresent()) {
+        Optional<Record> recordToPost = recordRepository.getFirstRecordInQueue();
+        if (recordToPost.isPresent()) {
             Optional<Record> lastPostedRecordOptional = recordRepository.getLastPostedRecord();
             if (lastPostedRecordOptional.isPresent()) {
                 Record lastPostedRecord = lastPostedRecordOptional.get();
                 Duration duration = Duration.between(lastPostedRecord.getPostDateTime(), LocalDateTime.now());
                 if (duration.toMinutes() >= postingInterval) {
-                    Record record = recordOptional.get();
+                    Record record = recordToPost.get();
                     doPost(record);
                 }
             } else {
-                Record record = recordOptional.get();
+                Record record = recordToPost.get();
                 doPost(record);
             }
         }

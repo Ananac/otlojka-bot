@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 @Data
 @RequiredArgsConstructor
 public class Record {
-
     @Id
     private long id;
     private String fileId;
@@ -22,5 +21,4 @@ public class Record {
     private LocalDateTime createDateTime;
     private LocalDateTime postDateTime;
     private String author;
-
 }

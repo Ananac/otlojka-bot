@@ -7,19 +7,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Set;
 
 @Component
@@ -50,62 +46,43 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
         return token;
     }
 
-    private enum COMMANDS {
-        START("/start"),
-        INFO("/info");
-
-        private String command;
-
-        COMMANDS(String command) {
-            this.command = command;
-        }
-
-        public String getCommand() {
-            return command;
-        }
-    }
-
     @Override
     public void onUpdateReceived(Update update) {
         Long userId = update.getMessage().getFrom().getId();
         if (adminId.contains(userId)) {
-            processMessage(update);
+            processMessage(update.getMessage());
         } else {
             reply(userId, "Permission denied");
         }
     }
 
-    private void processMessage(Update update) {
+    private void processMessage(Message message) {
         Record record = new Record();
-        Long chatId = update.getMessage().getChatId();
-        if (update.getMessage().getPhoto() != null && !update.getMessage().getPhoto().isEmpty()) {
-            String fileId = update.getMessage().getPhoto().stream()
-                    .max(Comparator.comparing(PhotoSize::getFileSize))
-                    .orElse(null)
-                    .getFileId();
+        Long chatId = message.getChatId();
+        if (message.getPhoto() != null && !message.getPhoto().isEmpty()) {
+            String fileId = getLargestFileId(message);
             record.setFileId(fileId);
-            record.setComment(update.getMessage().getCaption());
+            record.setComment(message.getCaption());
             record.setDataType("PHOTO");
-        } else if (update.getMessage().getVideo() != null) {
-            String fileId = update.getMessage().getVideo().getFileId();
+        } else if (message.getVideo() != null) {
+            String fileId = message.getVideo().getFileId();
             record.setFileId(fileId);
-            record.setComment(update.getMessage().getCaption());
+            record.setComment(message.getCaption());
             record.setDataType("VIDEO");
-        } else if (update.getMessage().getAnimation() != null) {
-            String fileId = update.getMessage().getAnimation().getFileId();
+        } else if (message.getAnimation() != null) {
+            String fileId = message.getAnimation().getFileId();
             record.setFileId(fileId);
-            record.setComment(update.getMessage().getCaption());
+            record.setComment(message.getCaption());
             record.setDataType("ANIMATION");
-        } else if (update.getMessage().getDocument() != null) {
-            String fileId = update.getMessage().getDocument().getFileId();
+        } else if (message.getDocument() != null) {
+            String fileId = message.getDocument().getFileId();
             record.setFileId(fileId);
-            record.setComment(update.getMessage().getCaption());
+            record.setComment(message.getCaption());
             record.setDataType("DOCUMENT");
-        } else if (update.getMessage().getText() != null) {
-            switch (update.getMessage().getText()) {
+        } else if (message.getText() != null) {
+            switch (message.getText()) {
                 case "/info": {
-                    long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
-                    reply(chatId, "Количество постов в отложке: " + numberOfScheduledPosts);
+                    reply(chatId, "Количество постов в отложке: " + recordRepository.getNumberOfScheduledPosts());
                     return;
                 }
                 case "/clear": {
@@ -114,8 +91,7 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
                 }
                 case "/delete": {
                     recordRepository.clear();
-                    long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
-                    reply(chatId, "Очищено. Количество постов в отложке: " + numberOfScheduledPosts);
+                    reply(chatId, "Очищено. Количество постов в отложке: " + recordRepository.getNumberOfScheduledPosts());
                     return;
                 }
             }
@@ -125,12 +101,18 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
             reply(chatId, "Я такое постить не буду");
             return;
         }
-        record.setId(update.getMessage().getMessageId());
+        record.setId(message.getMessageId());
         record.setCreateDateTime(LocalDateTime.now());
-        record.setAuthor(update.getMessage().getFrom().getUserName());
+        record.setAuthor(message.getFrom().getUserName());
         recordRepository.save(record);
-        long numberOfScheduledPosts = recordRepository.getNumberOfScheduledPosts();
-        reply(update.getMessage().getChatId(), "Добавлено. Количество постов в отложке: " + numberOfScheduledPosts);
+        reply(message.getChatId(), "Добавлено. Количество постов в отложке: " + recordRepository.getNumberOfScheduledPosts());
+    }
+
+    private String getLargestFileId(Message message) {
+        return message.getPhoto().stream()
+                .max(Comparator.comparing(PhotoSize::getFileSize))
+                .orElse(null)
+                .getFileId();
     }
 
     private void reply(Long chatId, String text) {
