@@ -130,6 +130,7 @@ public class TelegramBotHandler extends TelegramLongPollingBot {
         try {
             SendAnimation sendAnimation = new SendAnimation();
             sendAnimation.setChatId(chatId);
+            sendAnimation.setAnimation(new InputFile(record.getFileId()));
             execute(sendAnimation);
             afterPost(record);
         } catch (TelegramApiException e) {
